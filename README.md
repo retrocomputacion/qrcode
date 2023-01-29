@@ -18,7 +18,7 @@ Maximum string length is 153 characters.
   to install.
 
 ## Installation:
-Just copy qr.py to the `plugins` directory in your _RetroBBS_ installation.
+Just copy `qr.py` to the `plugins` directory in your _RetroBBS_ installation.
 
 If your BBS is running, you must restart it for the plugin to get loaded.
 
