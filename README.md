@@ -28,6 +28,9 @@ Use the following keys in your _RetroBBS_ configuration file.
 
 | key | description
 |:---:|:---
-| `entryZtitle` | The text to be shown in the menu screen
+| `entryZtitle`[^1] | The text to be shown in the menu screen
 | `entryZfunc` | Set the function to `QRCODE` to use this plugin
 | `entryZtext` | The text to encode, max 153 characters in length
+
+
+[^1]: Replace Z in the configuration file parameters with the adequate entry ID number.
