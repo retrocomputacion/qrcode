@@ -1,16 +1,12 @@
-#######################################
+###########################################
 # QR Plugin for RetroBBS
-#######################################
-# ©2023 by Durandal/Retrocomputacion
-#######################################
+###########################################
+# ©2023/2025 by Durandal/Retrocomputacion
+###########################################
 
 
 from common.bbsdebug import _LOG,bcolors
-import common.helpers as H
-import common.style as S
 from common.connection import Connection
-import common.petscii as P
-import common.turbo56k as TT
 
 import qrcode
 import io
@@ -50,34 +46,37 @@ sgpairs = [
     chr(0x2588)+chr(0x2588)
     ]
 
-# PETSCII semigraphics (code,reverse)
-sgpet = [
-    (b'\x20',b'\x92'),
+# TML semigraphics
+sgtml = [
+    (' ','<RVSOFF>'),
 
-    (b'\xbc',b'\x92'),
-    (b'\xac',b'\x92'),
-    (b'\xbb',b'\x92'),
-    (b'\xbe',b'\x92'),
+    ('<UR-QUAD>','<RVSOFF>'),
+    ('<LR-QUAD>','<RVSOFF>'),
+    ('<LL-QUAD>','<RVSOFF>'),
+    ('<UL-QUAD>','<RVSOFF>'),
 
-    (b'\xbf',b'\x12'),
-    (b'\xbf',b'\x92'),
+    ('<UL-LR-QUAD>','<RVSON>'),
+    ('<UL-LR-QUAD>','<RVSOFF>'),
 
-    (b'\xa2',b'\x12'),
-    (b'\xa1',b'\x12'),
-    (b'\xa2',b'\x92'),
-    (b'\xa1',b'\x92'),
+    ('<B-HALF>','<RVSON>'),
+    ('<L-HALF>','<RVSOn>'),
+    ('<B-HALF>','<RVSOFF>'),
+    ('<L-HALF>','<RVSOFF>'),
 
-    (b'\xac',b'\x12'),
-    (b'\xbc',b'\x12'),
-    (b'\xbe',b'\x12'),
-    (b'\xbb',b'\x12'),
+    ('<LR-QUAD>','<RVSON>'),
+    ('<UR-QUAD>','<RVSON>'),
+    ('<UL-QUAD>','<RVSON>'),
+    ('<LL-QUAD>','<RVSON>'),
 
-    (b'\x20',b'\x12')
+    (' ','<RVSON>')
 ]
 
 def plugFunction(conn:Connection, data:str):
 
     _LOG('Rendering QR code for: '+ data, id=conn.id, v=4)
+
+    swidth = conn.encoder.txt_geo[0]
+    sheight = conn.encoder.txt_geo[1]
 
     qr = qrcode.QRCode(
         1,
@@ -87,14 +86,15 @@ def plugFunction(conn:Connection, data:str):
     qr.add_data(data)
 
     qrmode = qr.best_fit()
+    modules = ((qrmode*4)+17)/2
 
-    if  qrmode > 8:
+    if  modules > swidth or modules > sheight:
        #String too long
         _LOG(bcolors.FAIL+'ERROR'+bcolors.ENDC+'- QRCODE: String too long',id=conn.id, v=1)
-        conn.Sendall(P.toPETSCII('\rError! String too long'))
+        conn.SendTML('<BR>Error! String too long')
         time.sleep(2)
         return
-    offset = (16-qrmode,8-qrmode)
+    offset = (((swidth-8)//2)-qrmode,((sheight-8)//2)-qrmode)
 
     f = io.StringIO()
     qr.make(fit=False)
@@ -104,24 +104,24 @@ def plugFunction(conn:Connection, data:str):
     f.seek(0)
     f.close()
     qrlines = text.splitlines()
-    petout = b'\r'*offset[1]
+    qrout = '<BR>'*offset[1]
 
     for c,line in enumerate(qrlines):
         if len(line)%2 != 0:
             line = line + '\xa0'
         pairs = [line[i:i+2] for i in range(0, len(line), 2)]
-        petout += b' '*offset[0]
-        rvs = b'\x92'
+        qrout += ' '*offset[0]
+        rvs = '<RVSOFF>'
         for sg in pairs:
             ix = sgpairs.index(sg)
-            if rvs == sgpet[ix][1]:
-                petout += sgpet[ix][0]
+            if rvs == sgtml[ix][1]:
+                qrout += sgtml[ix][0]
             else:
-                petout += sgpet[ix][1]+sgpet[ix][0]
-                rvs = sgpet[ix][1]
-        if c < 24:
-            petout += b'\r'
-    conn.Sendall(TT.to_Text(0,1,1)+chr(P.CLEAR)+chr(P.BLACK))
-    conn.Sendallbin(petout)
-    conn.Sendall(TT.set_CRSR(0,24)+chr(P.RED)+'['+chr(P.BLUE)+'_eXIT'+chr(P.RED)+']')
-    conn.ReceiveKey(b'_')
+                qrout += sgtml[ix][1]+sgtml[ix][0]
+                rvs = sgtml[ix][1]
+        if c < sheight-1:
+            qrout += '<BR>'
+    conn.SendTML(f'<TEXT border={conn.encoder.colors["WHITE"]} background={conn.encoder.colors["WHITE"]}><CLR><BLACK>')
+    conn.SendTML(qrout)
+    conn.SendTML(f'<AT x=0 y={sheight-1}><RED>[<BLUE><BACK><RED>]<CURSOR enable=False>')
+    conn.ReceiveKey('_')
